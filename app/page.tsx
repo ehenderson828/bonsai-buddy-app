@@ -3,18 +3,71 @@
 import { Navbar } from "@/components/layout/navbar"
 import { Footer } from "@/components/layout/footer"
 import { PostCard } from "@/components/bonsai/post-card"
-import { mockPosts } from "@/lib/mock-data"
+import { getAllPosts, likePost, unlikePost } from "@/lib/supabase/queries"
+import type { BonsaiPostWithDetails } from "@/lib/supabase/types"
 import { useAuth } from "@/components/providers/auth-provider"
 import { Button } from "@/components/ui/button"
+import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
-import { Sprout } from "lucide-react"
+import { Sprout, Loader2 } from "lucide-react"
+import { useEffect, useState } from "react"
 
 export default function HomePage() {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, isLoading: authLoading } = useAuth()
+  const { toast } = useToast()
+  const [posts, setPosts] = useState<BonsaiPostWithDetails[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
-  const handleLike = (postId: string) => {
-    console.log("[v0] Liked post:", postId)
-    // In a real app, this would call an API
+  useEffect(() => {
+    if (!authLoading) {
+      fetchPosts()
+    }
+  }, [authLoading])
+
+  const fetchPosts = async () => {
+    try {
+      setIsLoading(true)
+      const data = await getAllPosts()
+      setPosts(data)
+    } catch (error) {
+      console.error("Error fetching posts:", error)
+      toast({
+        title: "Error loading posts",
+        description: "Could not load the community feed. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleLike = async (postId: string, isLiked: boolean) => {
+    if (!isAuthenticated) {
+      toast({
+        title: "Login required",
+        description: "Please login to like posts",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      if (isLiked) {
+        await unlikePost(postId)
+      } else {
+        await likePost(postId)
+      }
+
+      // Refresh posts to get updated like count
+      await fetchPosts()
+    } catch (error) {
+      console.error("Error liking post:", error)
+      toast({
+        title: "Error",
+        description: "Could not update like. Please try again.",
+        variant: "destructive",
+      })
+    }
   }
 
   return (
@@ -61,12 +114,27 @@ export default function HomePage() {
             </div>
 
             <div className="space-y-6">
-              {mockPosts.map((post) => (
-                <PostCard key={post.id} post={post} onLike={handleLike} />
-              ))}
+              {isLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : posts.length === 0 ? (
+                <div className="text-center py-12 space-y-3">
+                  <p className="text-muted-foreground">No posts yet. Be the first to share your bonsai!</p>
+                  {isAuthenticated && (
+                    <Button asChild>
+                      <Link href="/profile/add">Share Your Bonsai</Link>
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                posts.map((post) => (
+                  <PostCard key={post.id} post={post} onLike={handleLike} />
+                ))
+              )}
             </div>
 
-            {!isAuthenticated && mockPosts.length > 0 && (
+            {!isAuthenticated && posts.length > 0 && (
               <div className="bg-card/50 border border-border rounded-lg p-6 text-center space-y-3">
                 <p className="text-sm text-muted-foreground">Want to like posts and share your own bonsai journey?</p>
                 <Button asChild>

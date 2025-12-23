@@ -9,31 +9,18 @@ import { Heart, MessageCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useAuth } from "@/components/providers/auth-provider"
-
-export interface BonsaiPost {
-  id: string
-  specimenId: string
-  specimenName: string
-  imageUrl: string
-  caption?: string
-  owner: string
-  ownerId: string
-  ownerAvatar?: string
-  likes: number
-  isLiked: boolean
-  timestamp: string
-  comments?: number
-}
+import type { BonsaiPostWithDetails } from "@/lib/supabase/types"
+import { formatDistanceToNow } from "date-fns"
 
 interface PostCardProps {
-  post: BonsaiPost
-  onLike?: (postId: string) => void
+  post: BonsaiPostWithDetails
+  onLike?: (postId: string, isLiked: boolean) => void
   className?: string
 }
 
 export function PostCard({ post, onLike, className }: PostCardProps) {
   const { isAuthenticated } = useAuth()
-  const [isLiked, setIsLiked] = useState(post.isLiked)
+  const [isLiked, setIsLiked] = useState(post.is_liked || false)
   const [likesCount, setLikesCount] = useState(post.likes)
 
   const handleLike = () => {
@@ -43,8 +30,13 @@ export function PostCard({ post, onLike, className }: PostCardProps) {
     setIsLiked(!isLiked)
     setLikesCount(isLiked ? likesCount - 1 : likesCount + 1)
 
-    onLike?.(post.id)
+    onLike?.(post.id, isLiked)
   }
+
+  const ownerName = post.owner?.name || "Unknown"
+  const ownerAvatar = post.owner?.avatar || undefined
+  const specimenName = post.specimen?.name || "Bonsai"
+  const timeAgo = formatDistanceToNow(new Date(post.created_at), { addSuffix: true })
 
   return (
     <Card className={cn("overflow-hidden", className)}>
@@ -52,23 +44,23 @@ export function PostCard({ post, onLike, className }: PostCardProps) {
         <div className="p-4 pb-3">
           <div className="flex items-center gap-3">
             <Avatar className="h-10 w-10">
-              <AvatarImage src={post.ownerAvatar || "/placeholder.svg"} alt={post.owner} />
-              <AvatarFallback>{post.owner[0]}</AvatarFallback>
+              <AvatarImage src={ownerAvatar || "/placeholder.svg"} alt={ownerName} />
+              <AvatarFallback>{ownerName[0]?.toUpperCase()}</AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
-              <Link href={`/user/${post.ownerId}`} className="font-semibold text-sm hover:underline">
-                {post.owner}
+              <Link href={`/user/${post.user_id}`} className="font-semibold text-sm hover:underline">
+                {ownerName}
               </Link>
-              <p className="text-xs text-muted-foreground">{post.timestamp}</p>
+              <p className="text-xs text-muted-foreground">{timeAgo}</p>
             </div>
           </div>
         </div>
 
-        <Link href={`/specimen/${post.specimenId}`}>
+        <Link href={`/specimen/${post.specimen_id}`}>
           <div className="relative aspect-square overflow-hidden bg-muted">
             <Image
-              src={post.imageUrl || "/placeholder.svg"}
-              alt={post.specimenName}
+              src={post.image_url || "/placeholder.svg"}
+              alt={specimenName}
               fill
               className="object-cover transition-transform duration-300 hover:scale-[1.02]"
             />
@@ -94,8 +86,8 @@ export function PostCard({ post, onLike, className }: PostCardProps) {
           </div>
 
           <div>
-            <Link href={`/specimen/${post.specimenId}`} className="font-semibold text-sm hover:underline">
-              {post.specimenName}
+            <Link href={`/specimen/${post.specimen_id}`} className="font-semibold text-sm hover:underline">
+              {specimenName}
             </Link>
             {post.caption && <p className="text-sm text-muted-foreground mt-1 text-balance">{post.caption}</p>}
           </div>

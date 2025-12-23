@@ -5,29 +5,47 @@ import { useSearchParams } from "next/navigation"
 import { Navbar } from "@/components/layout/navbar"
 import { Footer } from "@/components/layout/footer"
 import { BonsaiSpecimenCard } from "@/components/bonsai/bonsai-specimen-card"
-import { mockSpecimens } from "@/lib/mock-data"
+import { getAllSpecimens, searchSpecimens } from "@/lib/supabase/queries"
+import type { BonsaiSpecimenWithOwner } from "@/lib/supabase/types"
 import { Input } from "@/components/ui/input"
-import { Search } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
+import { Search, Loader2 } from "lucide-react"
 
 export default function SearchPage() {
   const searchParams = useSearchParams()
   const queryParam = searchParams.get("q") || ""
+  const { toast } = useToast()
   const [query, setQuery] = useState(queryParam)
-  const [results, setResults] = useState(mockSpecimens)
+  const [results, setResults] = useState<BonsaiSpecimenWithOwner[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    if (query.trim()) {
-      const filtered = mockSpecimens.filter(
-        (specimen) =>
-          specimen.name.toLowerCase().includes(query.toLowerCase()) ||
-          specimen.species.toLowerCase().includes(query.toLowerCase()) ||
-          specimen.owner.toLowerCase().includes(query.toLowerCase()),
-      )
-      setResults(filtered)
-    } else {
-      setResults(mockSpecimens)
-    }
+    fetchResults()
   }, [query])
+
+  const fetchResults = async () => {
+    try {
+      setIsLoading(true)
+      let data: BonsaiSpecimenWithOwner[]
+
+      if (query.trim()) {
+        data = await searchSpecimens(query)
+      } else {
+        data = await getAllSpecimens()
+      }
+
+      setResults(data)
+    } catch (error) {
+      console.error("Error searching specimens:", error)
+      toast({
+        title: "Error searching",
+        description: "Could not search bonsai. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -56,10 +74,14 @@ export default function SearchPage() {
               {query && ` for "${query}"`}
             </p>
 
-            {results.length > 0 ? (
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : results.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {results.map((specimen) => (
-                  <BonsaiSpecimenCard key={specimen.id} specimen={specimen} />
+                  <BonsaiSpecimenCard key={specimen.id} specimen={specimen} showOwner={true} />
                 ))}
               </div>
             ) : (

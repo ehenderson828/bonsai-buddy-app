@@ -3,20 +3,11 @@ import Link from "next/link"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-
-export interface BonsaiSpecimen {
-  id: string
-  name: string
-  species: string
-  age: number
-  health: "excellent" | "good" | "fair" | "needs-attention"
-  imageUrl: string
-  owner: string
-  ownerId: string
-}
+import type { BonsaiSpecimen, BonsaiSpecimenWithOwner } from "@/lib/supabase/types"
 
 interface BonsaiSpecimenCardProps {
-  specimen: BonsaiSpecimen
+  specimen: BonsaiSpecimen | BonsaiSpecimenWithOwner
+  showOwner?: boolean
   className?: string
 }
 
@@ -27,8 +18,9 @@ const healthConfig = {
   "needs-attention": { label: "Needs Care", className: "bg-destructive/20 text-destructive border-destructive/30" },
 }
 
-export function BonsaiSpecimenCard({ specimen, className }: BonsaiSpecimenCardProps) {
+export function BonsaiSpecimenCard({ specimen, showOwner = false, className }: BonsaiSpecimenCardProps) {
   const healthInfo = healthConfig[specimen.health]
+  const ownerName = "owner" in specimen ? specimen.owner?.name : undefined
 
   return (
     <Link href={`/specimen/${specimen.id}`}>
@@ -41,7 +33,7 @@ export function BonsaiSpecimenCard({ specimen, className }: BonsaiSpecimenCardPr
         <CardContent className="p-0">
           <div className="relative aspect-square overflow-hidden bg-muted">
             <Image
-              src={specimen.imageUrl || "/placeholder.svg"}
+              src={specimen.image_url || "/placeholder.svg"}
               alt={specimen.name}
               fill
               className="object-cover transition-transform duration-300 group-hover:scale-105"
@@ -59,7 +51,7 @@ export function BonsaiSpecimenCard({ specimen, className }: BonsaiSpecimenCardPr
             </div>
             <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span>{specimen.age} years old</span>
-              <span>by {specimen.owner}</span>
+              {showOwner && ownerName && <span>by {ownerName}</span>}
             </div>
           </div>
         </CardContent>

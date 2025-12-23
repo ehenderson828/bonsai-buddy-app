@@ -4,24 +4,60 @@ import { useAuth } from "@/components/providers/auth-provider"
 import { Navbar } from "@/components/layout/navbar"
 import { Footer } from "@/components/layout/footer"
 import { BonsaiSpecimenCard } from "@/components/bonsai/bonsai-specimen-card"
-import { mockSpecimens } from "@/lib/mock-data"
+import { getSpecimensByUser } from "@/lib/supabase/queries"
+import type { BonsaiSpecimen } from "@/lib/supabase/types"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
 import { redirect } from "next/navigation"
-import { Plus, Sprout, Calendar, Heart } from "lucide-react"
+import { Plus, Sprout, Calendar, Heart, Loader2 } from "lucide-react"
+import { useEffect, useState } from "react"
 
 export default function ProfilePage() {
-  const { user, isAuthenticated } = useAuth()
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth()
+  const { toast } = useToast()
+  const [specimens, setSpecimens] = useState<BonsaiSpecimen[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
-  if (!isAuthenticated) {
-    redirect("/login")
+  useEffect(() => {
+    if (!authLoading && isAuthenticated && user) {
+      fetchSpecimens()
+    } else if (!authLoading && !isAuthenticated) {
+      redirect("/login")
+    }
+  }, [authLoading, isAuthenticated, user])
+
+  const fetchSpecimens = async () => {
+    if (!user) return
+
+    try {
+      setIsLoading(true)
+      const data = await getSpecimensByUser(user.id)
+      setSpecimens(data)
+    } catch (error) {
+      console.error("Error fetching specimens:", error)
+      toast({
+        title: "Error loading collection",
+        description: "Could not load your bonsai collection. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
-  const userSpecimens = mockSpecimens.filter((s) => s.ownerId === user?.id)
-  const totalAge = userSpecimens.reduce((sum, s) => sum + s.age, 0)
-  const avgAge = userSpecimens.length > 0 ? Math.round(totalAge / userSpecimens.length) : 0
+  if (authLoading || !user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  const totalAge = specimens.reduce((sum, s) => sum + s.age, 0)
+  const avgAge = specimens.length > 0 ? Math.round(totalAge / specimens.length) : 0
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -47,7 +83,7 @@ export default function ProfilePage() {
                 <Card>
                   <CardContent className="pt-6 pb-4 text-center">
                     <Sprout className="h-6 w-6 mx-auto mb-2 text-primary" />
-                    <div className="text-2xl font-bold">{userSpecimens.length}</div>
+                    <div className="text-2xl font-bold">{specimens.length}</div>
                     <div className="text-xs text-muted-foreground">Bonsai Trees</div>
                   </CardContent>
                 </Card>
@@ -62,7 +98,7 @@ export default function ProfilePage() {
                   <CardContent className="pt-6 pb-4 text-center">
                     <Heart className="h-6 w-6 mx-auto mb-2 text-primary" />
                     <div className="text-2xl font-bold">
-                      {userSpecimens.filter((s) => s.health === "excellent").length}
+                      {specimens.filter((s) => s.health === "excellent").length}
                     </div>
                     <div className="text-xs text-muted-foreground">Excellent Health</div>
                   </CardContent>
@@ -89,9 +125,13 @@ export default function ProfilePage() {
               </Button>
             </div>
 
-            {userSpecimens.length > 0 ? (
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : specimens.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {userSpecimens.map((specimen) => (
+                {specimens.map((specimen) => (
                   <BonsaiSpecimenCard key={specimen.id} specimen={specimen} />
                 ))}
               </div>
