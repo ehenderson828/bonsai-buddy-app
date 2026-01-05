@@ -12,7 +12,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
 import { redirect } from "next/navigation"
-import { Plus, Sprout, Calendar, Heart, Loader2 } from "lucide-react"
+import { Plus, Calendar, Heart, Loader2 } from "lucide-react"
+import { BonsaiLogo } from "@/components/ui/bonsai-logo"
 import { useEffect, useState } from "react"
 
 export default function ProfilePage() {
@@ -82,7 +83,7 @@ export default function ProfilePage() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <Card>
                   <CardContent className="pt-6 pb-4 text-center">
-                    <Sprout className="h-6 w-6 mx-auto mb-2 text-primary" />
+                    <BonsaiLogo className="h-6 w-6 mx-auto mb-2 text-primary" />
                     <div className="text-2xl font-bold">{specimens.length}</div>
                     <div className="text-xs text-muted-foreground">Bonsai Trees</div>
                   </CardContent>
@@ -138,7 +139,7 @@ export default function ProfilePage() {
             ) : (
               <Card>
                 <CardContent className="flex flex-col items-center justify-center py-12 text-center space-y-3">
-                  <Sprout className="h-12 w-12 text-muted-foreground" />
+                  <BonsaiLogo className="h-12 w-12 text-muted-foreground" />
                   <div className="space-y-1">
                     <h3 className="font-semibold">No bonsai yet</h3>
                     <p className="text-sm text-muted-foreground">

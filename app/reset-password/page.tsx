@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Sprout } from "lucide-react"
+import { BonsaiLogo } from "@/components/ui/bonsai-logo"
 import { useToast } from "@/hooks/use-toast"
 
 export default function ResetPasswordPage() {
@@ -38,7 +38,7 @@ export default function ResetPasswordPage() {
         <Card className="w-full max-w-md">
           <CardHeader className="space-y-1 text-center">
             <div className="flex justify-center mb-2">
-              <Sprout className="h-10 w-10 text-primary" />
+              <BonsaiLogo className="h-10 w-10 text-primary" />
             </div>
             <CardTitle className="text-2xl font-bold">Check Your Email</CardTitle>
             <CardDescription>We've sent password reset instructions to {email}</CardDescription>
@@ -58,7 +58,7 @@ export default function ResetPasswordPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1 text-center">
           <div className="flex justify-center mb-2">
-            <Sprout className="h-10 w-10 text-primary" />
+            <BonsaiLogo className="h-10 w-10 text-primary" />
           </div>
           <CardTitle className="text-2xl font-bold">Reset Password</CardTitle>
           <CardDescription>Enter your email to receive reset instructions</CardDescription>

@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Sprout } from "lucide-react"
+import { BonsaiLogo } from "@/components/ui/bonsai-logo"
 
 export function Footer() {
   return (
@@ -7,7 +7,7 @@ export function Footer() {
       <div className="container mx-auto px-4 py-8">
         <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
           <div className="flex items-center gap-2">
-            <Sprout className="h-5 w-5 text-primary" />
+            <BonsaiLogo className="h-5 w-5 text-primary" />
             <span className="text-sm font-medium">Bonsai Buddy</span>
           </div>
 

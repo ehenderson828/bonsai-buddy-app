@@ -9,7 +9,8 @@ import { useAuth } from "@/components/providers/auth-provider"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
-import { Sprout, Loader2 } from "lucide-react"
+import { Loader2 } from "lucide-react"
+import { BonsaiLogo } from "@/components/ui/bonsai-logo"
 import { useEffect, useState } from "react"
 
 export default function HomePage() {
@@ -80,7 +81,7 @@ export default function HomePage() {
             <div className="container mx-auto px-4">
               <div className="max-w-2xl mx-auto text-center space-y-4">
                 <div className="flex justify-center">
-                  <Sprout className="h-12 w-12 text-primary" />
+                  <BonsaiLogo className="h-[72px] w-[72px] text-primary" />
                 </div>
                 <h1 className="text-4xl font-bold tracking-tight text-balance">Welcome to Bonsai Buddy</h1>
                 <p className="text-lg text-muted-foreground text-balance">

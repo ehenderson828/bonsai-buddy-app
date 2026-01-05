@@ -29,4 +29,6 @@ next-env.d.ts
 
 # Supabase DB password files
 supabase-password.txt
-supasebase-password.txt
+
+# Planning directory
+/planning
