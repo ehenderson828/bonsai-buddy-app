@@ -26,7 +26,7 @@ export function Footer() {
             </Link>
           </nav>
 
-          <p className="text-sm text-muted-foreground">© 2025 Bonsai Buddy. Growing together.</p>
+          <p className="text-sm text-muted-foreground">© 2026 Bonsai Buddy. Growing together.</p>
         </div>
       </div>
     </footer>
