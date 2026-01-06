@@ -54,7 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchUserProfile = async (userId: string) => {
     try {
-      const { data: profile, error } = await supabase
+      const { data: profile, error} = await supabase
         .from("profiles")
         .select("*")
         .eq("id", userId)
@@ -69,6 +69,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email: profile.email,
           avatar: profile.avatar || undefined,
         })
+
+        // Sync theme from database to localStorage
+        // ThemeProvider will pick it up on next render
+        if (profile.theme && (profile.theme === "light" || profile.theme === "dark")) {
+          localStorage.setItem("bonsai_theme", profile.theme)
+          // Trigger a custom event to notify ThemeProvider
+          window.dispatchEvent(new CustomEvent("theme-sync", { detail: { theme: profile.theme } }))
+        }
       }
     } catch (error) {
       console.error("Error fetching user profile:", error)

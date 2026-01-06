@@ -2,7 +2,9 @@
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
+@custom-variant light (&:is(.light *));
 
+/* Dark Mode (Default) */
 :root {
   --background: oklch(0.16 0.01 150);
   --foreground: oklch(0.95 0.01 150);
@@ -29,49 +31,50 @@
   --chart-4: oklch(0.5 0.15 100);
   --chart-5: oklch(0.6 0.1 140);
   --radius: 0.75rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar: oklch(0.145 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.55 0.12 145);
+  --sidebar-primary-foreground: oklch(0.98 0.01 150);
+  --sidebar-accent: oklch(0.25 0.015 150);
+  --sidebar-accent-foreground: oklch(0.95 0.01 150);
+  --sidebar-border: oklch(0.28 0.015 150);
+  --sidebar-ring: oklch(0.55 0.12 145);
 }
 
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.145 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.145 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.985 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.396 0.141 25.723);
-  --destructive-foreground: oklch(0.637 0.237 25.331);
-  --border: oklch(0.269 0 0);
-  --input: oklch(0.269 0 0);
-  --ring: oklch(0.439 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(0.269 0 0);
-  --sidebar-ring: oklch(0.439 0 0);
+/* Light Mode */
+.light {
+  --background: oklch(0.99 0.005 150);
+  --foreground: oklch(0.15 0.01 150);
+  --card: oklch(0.98 0.005 150);
+  --card-foreground: oklch(0.15 0.01 150);
+  --popover: oklch(0.99 0.005 150);
+  --popover-foreground: oklch(0.15 0.01 150);
+  --primary: oklch(0.55 0.12 145);
+  --primary-foreground: oklch(0.98 0.01 150);
+  --secondary: oklch(0.92 0.01 150);
+  --secondary-foreground: oklch(0.15 0.01 150);
+  --muted: oklch(0.94 0.01 150);
+  --muted-foreground: oklch(0.45 0.01 150);
+  --accent: oklch(0.93 0.02 120);
+  --accent-foreground: oklch(0.15 0.01 150);
+  --destructive: oklch(0.55 0.2 25);
+  --destructive-foreground: oklch(0.98 0.01 150);
+  --border: oklch(0.88 0.01 150);
+  --input: oklch(0.88 0.01 150);
+  --ring: oklch(0.55 0.12 145);
+  --chart-1: oklch(0.55 0.12 145);
+  --chart-2: oklch(0.45 0.1 120);
+  --chart-3: oklch(0.65 0.08 160);
+  --chart-4: oklch(0.5 0.15 100);
+  --chart-5: oklch(0.6 0.1 140);
+  --sidebar: oklch(0.98 0.005 150);
+  --sidebar-foreground: oklch(0.15 0.01 150);
+  --sidebar-primary: oklch(0.55 0.12 145);
+  --sidebar-primary-foreground: oklch(0.98 0.01 150);
+  --sidebar-accent: oklch(0.92 0.01 150);
+  --sidebar-accent-foreground: oklch(0.15 0.01 150);
+  --sidebar-border: oklch(0.88 0.01 150);
+  --sidebar-ring: oklch(0.55 0.12 145);
 }
 
 @theme inline {
@@ -118,7 +121,22 @@
   * {
     @apply border-border outline-ring/50;
   }
+
+  /* Smooth theme transitions */
+  html {
+    transition: background-color 0.3s ease-in-out, color 0.3s ease-in-out;
+  }
+
   body {
     @apply bg-background text-foreground;
+  }
+
+  /* Apply smooth transitions to all themed elements */
+  *,
+  *::before,
+  *::after {
+    transition-property: background-color, border-color, color, fill, stroke;
+    transition-timing-function: ease-in-out;
+    transition-duration: 0.3s;
   }
 }

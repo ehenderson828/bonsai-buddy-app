@@ -2,12 +2,31 @@
 // These match the schema defined in supabase/migrations/001_initial_schema.sql
 
 export type HealthStatus = 'excellent' | 'good' | 'fair' | 'needs-attention'
+export type Theme = 'light' | 'dark'
+
+export interface EmailPreferences {
+  marketing: boolean
+  updates: boolean
+  community: boolean
+  weekly_digest: boolean
+}
+
+export interface NotificationSettings {
+  post_likes: boolean
+  new_followers: boolean
+  comments: boolean
+  specimen_subscriptions: boolean
+}
 
 export interface Profile {
   id: string
   name: string
   email: string
   avatar?: string | null
+  theme: Theme
+  email_preferences: EmailPreferences
+  notification_settings: NotificationSettings
+  is_private: boolean
   created_at: string
   updated_at: string
 }

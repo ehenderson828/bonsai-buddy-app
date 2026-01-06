@@ -370,3 +370,54 @@ export async function getSubscriberCount(specimenId: string): Promise<number> {
   if (error) throw error
   return count || 0
 }
+
+// =====================================================
+// USER PREFERENCES QUERIES
+// =====================================================
+
+export async function updateUserTheme(userId: string, theme: 'light' | 'dark') {
+  const { error } = await supabase
+    .from('profiles')
+    .update({ theme })
+    .eq('id', userId)
+
+  if (error) throw error
+}
+
+export async function updateEmailPreferences(userId: string, preferences: any) {
+  const { error } = await supabase
+    .from('profiles')
+    .update({ email_preferences: preferences })
+    .eq('id', userId)
+
+  if (error) throw error
+}
+
+export async function updateNotificationSettings(userId: string, settings: any) {
+  const { error } = await supabase
+    .from('profiles')
+    .update({ notification_settings: settings })
+    .eq('id', userId)
+
+  if (error) throw error
+}
+
+export async function updateAccountPrivacy(userId: string, isPrivate: boolean) {
+  const { error } = await supabase
+    .from('profiles')
+    .update({ is_private: isPrivate })
+    .eq('id', userId)
+
+  if (error) throw error
+}
+
+export async function getUserPreferences(userId: string) {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('theme, email_preferences, notification_settings, is_private')
+    .eq('id', userId)
+    .single()
+
+  if (error) throw error
+  return data
+}
