@@ -6,6 +6,8 @@ import type {
   BonsaiPostWithDetails,
   Profile,
   HealthStatus,
+  Comment,
+  CommentWithDetails,
 } from "./types"
 
 // =====================================================
@@ -135,7 +137,33 @@ export async function updateSpecimen(
 }
 
 export async function deleteSpecimen(id: string) {
-  const { error } = await supabase.from("bonsai_specimens").delete().eq("id", id)
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new Error("User not authenticated")
+
+  // Delete all posts for this specimen first
+  const { error: postsError } = await supabase
+    .from("bonsai_posts")
+    .delete()
+    .eq("specimen_id", id)
+
+  if (postsError) throw postsError
+
+  // Delete all subscriptions for this specimen
+  const { error: subsError } = await supabase
+    .from("specimen_subscriptions")
+    .delete()
+    .eq("specimen_id", id)
+
+  if (subsError) throw subsError
+
+  // Finally delete the specimen itself
+  const { error } = await supabase
+    .from("bonsai_specimens")
+    .delete()
+    .eq("id", id)
+    .eq("user_id", user.id) // Security: only owner can delete
 
   if (error) throw error
 }
@@ -156,14 +184,32 @@ export async function getAllPosts(): Promise<BonsaiPostWithDetails[]> {
       specimen:bonsai_specimens(*),
       owner:profiles(*)
     `)
-    .order("created_at", { ascending: false })
 
   if (error) throw error
+
+  // Filter posts based on privacy settings
+  const filteredData = (data as any[]).filter((post) => {
+    // Always show user's own posts
+    if (user && post.user_id === user.id) {
+      return true
+    }
+
+    // For other users' posts, check both post and account privacy
+    // Show only if: post is public AND account is not private
+    return post.is_public && !post.owner?.is_private
+  })
+
+  // Sort by most recent activity (edited_at if available, otherwise created_at)
+  const sortedData = filteredData.sort((a, b) => {
+    const aTime = a.edited_at || a.created_at
+    const bTime = b.edited_at || b.created_at
+    return new Date(bTime).getTime() - new Date(aTime).getTime()
+  })
 
   // Check if current user has liked each post
   if (user) {
     const postsWithLikes = await Promise.all(
-      (data as any[]).map(async (post) => {
+      sortedData.map(async (post) => {
         const { data: like } = await supabase
           .from("post_likes")
           .select("id")
@@ -180,7 +226,7 @@ export async function getAllPosts(): Promise<BonsaiPostWithDetails[]> {
     return postsWithLikes as BonsaiPostWithDetails[]
   }
 
-  return data.map((post) => ({ ...post, is_liked: false })) as BonsaiPostWithDetails[]
+  return sortedData.map((post) => ({ ...post, is_liked: false })) as BonsaiPostWithDetails[]
 }
 
 export async function getPostsBySpecimen(specimenId: string): Promise<BonsaiPostWithDetails[]> {
@@ -200,10 +246,16 @@ export async function getPostsBySpecimen(specimenId: string): Promise<BonsaiPost
 
   if (error) throw error
 
+  // Filter posts based on privacy - show all own posts, only public posts from others
+  const filteredData = (data as any[]).filter((post) => {
+    if (user && post.user_id === user.id) return true
+    return post.is_public
+  })
+
   // Check if current user has liked each post
   if (user) {
     const postsWithLikes = await Promise.all(
-      (data as any[]).map(async (post) => {
+      filteredData.map(async (post) => {
         const { data: like } = await supabase
           .from("post_likes")
           .select("id")
@@ -220,10 +272,14 @@ export async function getPostsBySpecimen(specimenId: string): Promise<BonsaiPost
     return postsWithLikes as BonsaiPostWithDetails[]
   }
 
-  return data.map((post) => ({ ...post, is_liked: false })) as BonsaiPostWithDetails[]
+  return filteredData.map((post) => ({ ...post, is_liked: false })) as BonsaiPostWithDetails[]
 }
 
 export async function getPostsByUser(userId: string): Promise<BonsaiPost[]> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
   const { data, error } = await supabase
     .from("bonsai_posts")
     .select("*")
@@ -231,13 +287,21 @@ export async function getPostsByUser(userId: string): Promise<BonsaiPost[]> {
     .order("created_at", { ascending: false })
 
   if (error) throw error
-  return data as BonsaiPost[]
+
+  // If viewing own profile, show all posts
+  // If viewing someone else's profile, show only public posts
+  if (user && user.id === userId) {
+    return data as BonsaiPost[]
+  }
+
+  return (data as BonsaiPost[]).filter((post) => post.is_public)
 }
 
 export async function createPost(post: {
   specimen_id: string
   image_url: string
   caption?: string
+  is_public?: boolean
 }) {
   const {
     data: { user },
@@ -250,6 +314,7 @@ export async function createPost(post: {
       {
         ...post,
         user_id: user.id,
+        is_public: post.is_public ?? true, // Default to public if not specified
       },
     ])
     .select()
@@ -259,8 +324,45 @@ export async function createPost(post: {
   return data as BonsaiPost
 }
 
+export async function updatePost(
+  postId: string,
+  updates: {
+    image_url?: string
+    caption?: string
+    is_public?: boolean
+  }
+) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new Error("User not authenticated")
+
+  const { data, error } = await supabase
+    .from("bonsai_posts")
+    .update({
+      ...updates,
+      edited_at: new Date().toISOString(),
+    })
+    .eq("id", postId)
+    .eq("user_id", user.id) // Security: only owner can update
+    .select()
+    .single()
+
+  if (error) throw error
+  return data as BonsaiPost
+}
+
 export async function deletePost(id: string) {
   const { error } = await supabase.from("bonsai_posts").delete().eq("id", id)
+
+  if (error) throw error
+}
+
+export async function updatePostPrivacy(postId: string, isPublic: boolean) {
+  const { error } = await supabase
+    .from("bonsai_posts")
+    .update({ is_public: isPublic })
+    .eq("id", postId)
 
   if (error) throw error
 }
@@ -295,6 +397,192 @@ export async function unlikePost(postId: string) {
     .eq("user_id", user.id)
 
   if (error) throw error
+}
+
+// =====================================================
+// COMMENT QUERIES
+// =====================================================
+
+export async function getCommentsByPost(postId: string): Promise<CommentWithDetails[]> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  // Get all comments for the post
+  const { data: commentsData, error: commentsError } = await supabase
+    .from("comments")
+    .select(`
+      *,
+      author:profiles(*)
+    `)
+    .eq("post_id", postId)
+    .order("created_at", { ascending: true })
+
+  if (commentsError) throw commentsError
+
+  // Get like counts for all comments
+  const { data: likeCounts, error: likeCountsError } = await supabase
+    .from("comment_likes")
+    .select("comment_id")
+    .in(
+      "comment_id",
+      commentsData.map((c: any) => c.id)
+    )
+
+  if (likeCountsError) throw likeCountsError
+
+  // Build like count map
+  const likeCountMap = (likeCounts || []).reduce((acc: any, like: any) => {
+    acc[like.comment_id] = (acc[like.comment_id] || 0) + 1
+    return acc
+  }, {})
+
+  // Check which comments user has liked
+  let userLikes: any[] = []
+  if (user) {
+    const { data: userLikesData } = await supabase
+      .from("comment_likes")
+      .select("comment_id")
+      .eq("user_id", user.id)
+      .in(
+        "comment_id",
+        commentsData.map((c: any) => c.id)
+      )
+    userLikes = userLikesData || []
+  }
+
+  const userLikeSet = new Set(userLikes.map((l: any) => l.comment_id))
+
+  // Build threaded structure
+  const commentsMap = new Map<string, CommentWithDetails>()
+  const rootComments: CommentWithDetails[] = []
+
+  // First pass: create all comment objects
+  commentsData.forEach((comment: any) => {
+    const commentWithDetails: CommentWithDetails = {
+      ...comment,
+      likes: likeCountMap[comment.id] || 0,
+      is_liked: userLikeSet.has(comment.id),
+      replies: [],
+    }
+    commentsMap.set(comment.id, commentWithDetails)
+  })
+
+  // Second pass: build tree structure
+  commentsData.forEach((comment: any) => {
+    const commentWithDetails = commentsMap.get(comment.id)!
+    if (comment.parent_comment_id) {
+      const parent = commentsMap.get(comment.parent_comment_id)
+      if (parent) {
+        parent.replies = parent.replies || []
+        parent.replies.push(commentWithDetails)
+      }
+    } else {
+      rootComments.push(commentWithDetails)
+    }
+  })
+
+  return rootComments
+}
+
+export async function createComment(comment: {
+  post_id: string
+  content: string
+  parent_comment_id?: string
+}) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new Error("User not authenticated")
+
+  const { data, error } = await supabase
+    .from("comments")
+    .insert([
+      {
+        ...comment,
+        user_id: user.id,
+      },
+    ])
+    .select()
+    .single()
+
+  if (error) throw error
+  return data as Comment
+}
+
+export async function updateComment(commentId: string, content: string) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new Error("User not authenticated")
+
+  const { data, error } = await supabase
+    .from("comments")
+    .update({
+      content,
+      edited_at: new Date().toISOString(),
+    })
+    .eq("id", commentId)
+    .eq("user_id", user.id)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data as Comment
+}
+
+export async function deleteComment(commentId: string) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new Error("User not authenticated")
+
+  // Soft delete: mark as deleted
+  const { error } = await supabase
+    .from("comments")
+    .update({ is_deleted: true, content: "" })
+    .eq("id", commentId)
+
+  if (error) throw error
+}
+
+export async function likeComment(commentId: string) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new Error("User not authenticated")
+
+  const { error } = await supabase
+    .from("comment_likes")
+    .insert([{ comment_id: commentId, user_id: user.id }])
+
+  if (error) throw error
+}
+
+export async function unlikeComment(commentId: string) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new Error("User not authenticated")
+
+  const { error } = await supabase
+    .from("comment_likes")
+    .delete()
+    .eq("comment_id", commentId)
+    .eq("user_id", user.id)
+
+  if (error) throw error
+}
+
+export async function getCommentCountByPost(postId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from("comments")
+    .select("*", { count: "exact", head: true })
+    .eq("post_id", postId)
+    .eq("is_deleted", false)
+
+  if (error) throw error
+  return count || 0
 }
 
 export async function isPostLikedByUser(postId: string): Promise<boolean> {

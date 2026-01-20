@@ -4,15 +4,15 @@ import { useAuth } from "@/components/providers/auth-provider"
 import { Navbar } from "@/components/layout/navbar"
 import { Footer } from "@/components/layout/footer"
 import { BonsaiSpecimenCard } from "@/components/bonsai/bonsai-specimen-card"
-import { getSpecimensByUser } from "@/lib/supabase/queries"
-import type { BonsaiSpecimen } from "@/lib/supabase/types"
+import { getSpecimensByUser, getPostsByUser } from "@/lib/supabase/queries"
+import type { BonsaiSpecimen, BonsaiPost } from "@/lib/supabase/types"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
 import { redirect } from "next/navigation"
-import { Plus, Calendar, Heart, Loader2 } from "lucide-react"
+import { Plus, Calendar, Heart, Loader2, Lock, Eye, EyeOff } from "lucide-react"
 import { BonsaiLogo } from "@/components/ui/bonsai-logo"
 import { useEffect, useState } from "react"
 
@@ -20,28 +20,33 @@ export default function ProfilePage() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth()
   const { toast } = useToast()
   const [specimens, setSpecimens] = useState<BonsaiSpecimen[]>([])
+  const [posts, setPosts] = useState<BonsaiPost[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     if (!authLoading && isAuthenticated && user) {
-      fetchSpecimens()
+      fetchData()
     } else if (!authLoading && !isAuthenticated) {
       redirect("/login")
     }
   }, [authLoading, isAuthenticated, user])
 
-  const fetchSpecimens = async () => {
+  const fetchData = async () => {
     if (!user) return
 
     try {
       setIsLoading(true)
-      const data = await getSpecimensByUser(user.id)
-      setSpecimens(data)
+      const [specimensData, postsData] = await Promise.all([
+        getSpecimensByUser(user.id),
+        getPostsByUser(user.id),
+      ])
+      setSpecimens(specimensData)
+      setPosts(postsData)
     } catch (error) {
-      console.error("Error fetching specimens:", error)
+      console.error("Error fetching data:", error)
       toast({
-        title: "Error loading collection",
-        description: "Could not load your bonsai collection. Please try again.",
+        title: "Error loading data",
+        description: "Could not load your profile data. Please try again.",
         variant: "destructive",
       })
     } finally {
@@ -59,6 +64,8 @@ export default function ProfilePage() {
 
   const totalAge = specimens.reduce((sum, s) => sum + s.age, 0)
   const avgAge = specimens.length > 0 ? Math.round(totalAge / specimens.length) : 0
+  const publicPosts = posts.filter((p) => p.is_public).length
+  const privatePosts = posts.filter((p) => !p.is_public).length
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -76,11 +83,14 @@ export default function ProfilePage() {
 
             <div className="flex-1 space-y-4">
               <div>
-                <h1 className="text-3xl font-bold tracking-tight">{user?.name}</h1>
+                <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+                  {user?.name}
+                  {user?.is_private && <Lock className="h-5 w-5 text-muted-foreground" />}
+                </h1>
                 <p className="text-muted-foreground">{user?.email}</p>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                 <Card>
                   <CardContent className="pt-6 pb-4 text-center">
                     <BonsaiLogo className="h-6 w-6 mx-auto mb-2 text-primary" />
@@ -109,6 +119,20 @@ export default function ProfilePage() {
                     <Calendar className="h-6 w-6 mx-auto mb-2 text-primary" />
                     <div className="text-2xl font-bold">{totalAge}</div>
                     <div className="text-xs text-muted-foreground">Total Years</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-6 pb-4 text-center">
+                    <Eye className="h-6 w-6 mx-auto mb-2 text-primary" />
+                    <div className="text-2xl font-bold">{publicPosts}</div>
+                    <div className="text-xs text-muted-foreground">Public Posts</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-6 pb-4 text-center">
+                    <EyeOff className="h-6 w-6 mx-auto mb-2 text-primary" />
+                    <div className="text-2xl font-bold">{privatePosts}</div>
+                    <div className="text-xs text-muted-foreground">Private Posts</div>
                   </CardContent>
                 </Card>
               </div>

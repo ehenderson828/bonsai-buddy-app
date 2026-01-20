@@ -6,7 +6,7 @@ import Link from "next/link"
 import { useAuth } from "@/components/providers/auth-provider"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Search, User, Settings } from "lucide-react"
+import { Search, User, Settings, Lock } from "lucide-react"
 import { BonsaiLogo } from "@/components/ui/bonsai-logo"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
@@ -83,7 +83,10 @@ export function Navbar() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem asChild>
-                    <Link href="/profile">My Account</Link>
+                    <Link href="/profile" className="flex items-center">
+                      My Account
+                      {user?.is_private && <Lock className="ml-2 h-3 w-3 text-muted-foreground" />}
+                    </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link href="/profile/add">Add Bonsai</Link>

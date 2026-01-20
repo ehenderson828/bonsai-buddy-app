@@ -51,6 +51,8 @@ export interface BonsaiPost {
   image_url: string
   caption?: string | null
   likes: number
+  is_public: boolean
+  edited_at?: string | null
   created_at: string
   updated_at: string
 }
@@ -69,6 +71,25 @@ export interface SpecimenSubscription {
   created_at: string
 }
 
+export interface Comment {
+  id: string
+  post_id: string
+  user_id: string
+  parent_comment_id?: string | null
+  content: string
+  is_deleted: boolean
+  edited_at?: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface CommentLike {
+  id: string
+  comment_id: string
+  user_id: string
+  created_at: string
+}
+
 // Extended types with joined data (for queries)
 export interface BonsaiSpecimenWithOwner extends BonsaiSpecimen {
   owner?: Profile
@@ -79,6 +100,13 @@ export interface BonsaiPostWithDetails extends BonsaiPost {
   owner?: Profile
   is_liked?: boolean
   comments?: number
+}
+
+export interface CommentWithDetails extends Comment {
+  author?: Profile
+  likes: number
+  is_liked?: boolean
+  replies?: CommentWithDetails[]
 }
 
 // Database schema type for Supabase client

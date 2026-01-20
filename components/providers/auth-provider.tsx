@@ -9,6 +9,7 @@ interface User {
   name: string
   email: string
   avatar?: string
+  is_private?: boolean
 }
 
 interface AuthContextType {
@@ -68,6 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           name: profile.name,
           email: profile.email,
           avatar: profile.avatar || undefined,
+          is_private: profile.is_private || false,
         })
 
         // Sync theme from database to localStorage

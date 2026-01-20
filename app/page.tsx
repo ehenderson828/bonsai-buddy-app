@@ -130,7 +130,7 @@ export default function HomePage() {
                 </div>
               ) : (
                 posts.map((post) => (
-                  <PostCard key={post.id} post={post} onLike={handleLike} />
+                  <PostCard key={post.id} post={post} onLike={handleLike} onPrivacyChange={fetchPosts} onDelete={fetchPosts} />
                 ))
               )}
             </div>

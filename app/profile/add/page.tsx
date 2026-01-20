@@ -13,10 +13,11 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
 import { redirect } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
 import { Upload, X, Loader2 } from "lucide-react"
-import { createSpecimen } from "@/lib/supabase/queries"
+import { createSpecimen, createPost } from "@/lib/supabase/queries"
 import { uploadImage, validateImageFile, compressImage } from "@/lib/supabase/storage"
 import type { HealthStatus } from "@/lib/supabase/types"
 
@@ -28,6 +29,7 @@ export default function AddBonsaiPage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [health, setHealth] = useState<HealthStatus>("good")
+  const [isPublic, setIsPublic] = useState(true)
 
   if (!isAuthenticated) {
     redirect("/login")
@@ -90,7 +92,7 @@ export default function AddBonsaiPage() {
       const imageUrl = await uploadImage(compressedImage, user.id)
 
       // Create specimen
-      await createSpecimen({
+      const specimen = await createSpecimen({
         name,
         species,
         age,
@@ -99,9 +101,20 @@ export default function AddBonsaiPage() {
         care_notes: careNotes || undefined,
       })
 
+      // Create associated post with auto-generated caption
+      const caption = `Just added ${name} (${species}) to my collection!`
+      await createPost({
+        specimen_id: specimen.id,
+        image_url: imageUrl,
+        caption,
+        is_public: isPublic,
+      })
+
       toast({
         title: "Bonsai added!",
-        description: "Your bonsai has been added to your collection.",
+        description: isPublic
+          ? "Your bonsai has been added to your collection and shared with the community."
+          : "Your bonsai has been added to your collection (private).",
       })
 
       router.push("/profile")
@@ -195,6 +208,23 @@ export default function AddBonsaiPage() {
                 <div className="space-y-2">
                   <Label htmlFor="notes">Care Notes (Optional)</Label>
                   <Textarea id="notes" name="notes" placeholder="Share any care tips or notes about this bonsai..." rows={4} />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="privacy" className="text-base font-semibold">Post Privacy</Label>
+                  <div className="flex items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="privacy" className="font-medium cursor-pointer">
+                        {isPublic ? "Public Post" : "Private Post"}
+                      </Label>
+                      <p className="text-sm text-muted-foreground">
+                        {isPublic
+                          ? "This post will appear in the community feed"
+                          : "This post will only be visible to you"}
+                      </p>
+                    </div>
+                    <Switch id="privacy" checked={isPublic} onCheckedChange={setIsPublic} />
+                  </div>
                 </div>
 
                 <div className="flex gap-3">

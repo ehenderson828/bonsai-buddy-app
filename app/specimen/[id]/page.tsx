@@ -8,15 +8,32 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { getSpecimenById, getPostsBySpecimen, subscribeToSpecimen, unsubscribeFromSpecimen, isSubscribedToSpecimen } from "@/lib/supabase/queries"
+import { PostCard } from "@/components/bonsai/post-card"
+import { getSpecimenById, getPostsBySpecimen, subscribeToSpecimen, unsubscribeFromSpecimen, isSubscribedToSpecimen, likePost, unlikePost, deleteSpecimen } from "@/lib/supabase/queries"
 import type { BonsaiSpecimenWithOwner, BonsaiPostWithDetails } from "@/lib/supabase/types"
 import { useAuth } from "@/components/providers/auth-provider"
-import { ArrowLeft, Bell, BellOff, Heart, Calendar, Activity, Loader2 } from "lucide-react"
+import { ArrowLeft, Bell, BellOff, Calendar, Activity, Loader2, Trash2, MoreVertical } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { cn } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
-import { formatDistanceToNow } from "date-fns"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 export default function SpecimenDetailPage() {
   const params = useParams()
@@ -28,6 +45,7 @@ export default function SpecimenDetailPage() {
   const [isSubscribed, setIsSubscribed] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isSubscribing, setIsSubscribing] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   useEffect(() => {
     fetchSpecimenData()
@@ -105,6 +123,67 @@ export default function SpecimenDetailPage() {
     }
   }
 
+  const handleLike = async (postId: string, isLiked: boolean) => {
+    if (!isAuthenticated) {
+      toast({
+        title: "Login required",
+        description: "Please login to like posts",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      if (isLiked) {
+        await unlikePost(postId)
+      } else {
+        await likePost(postId)
+      }
+
+      // Refresh posts to get updated like count
+      const postsData = await getPostsBySpecimen(params.id as string)
+      setPosts(postsData)
+    } catch (error) {
+      console.error("Error liking post:", error)
+      toast({
+        title: "Error",
+        description: "Could not update like. Please try again.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const refreshPosts = async () => {
+    try {
+      const postsData = await getPostsBySpecimen(params.id as string)
+      setPosts(postsData)
+    } catch (error) {
+      console.error("Error refreshing posts:", error)
+    }
+  }
+
+  const handleDeleteSpecimen = async () => {
+    if (!specimen || !user || specimen.user_id !== user.id) return
+
+    setIsDeleting(true)
+    try {
+      await deleteSpecimen(specimen.id)
+      toast({
+        title: "Bonsai deleted",
+        description: `${specimen.name} and all its posts have been permanently deleted`,
+      })
+      router.push("/profile")
+    } catch (error) {
+      console.error("Error deleting specimen:", error)
+      toast({
+        title: "Error",
+        description: "Failed to delete bonsai. Please try again.",
+        variant: "destructive",
+      })
+      setIsDeleting(false)
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="flex min-h-screen flex-col">
@@ -147,10 +226,50 @@ export default function SpecimenDetailPage() {
 
       <main className="flex-1">
         <div className="container mx-auto px-4 py-8 space-y-6">
-          <Button variant="ghost" onClick={() => router.back()} className="gap-2">
-            <ArrowLeft className="h-4 w-4" />
-            Back
-          </Button>
+          <div className="flex items-center justify-between">
+            <Button variant="ghost" onClick={() => router.back()} className="gap-2">
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </Button>
+            {user && specimen.user_id === user.id && (
+              <AlertDialog>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <AlertDialogTrigger asChild>
+                      <DropdownMenuItem className="text-destructive focus:text-destructive cursor-pointer">
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete Bonsai
+                      </DropdownMenuItem>
+                    </AlertDialogTrigger>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete {specimen.name}?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This action cannot be undone. This will permanently delete this bonsai specimen and all
+                      associated posts. All subscriptions will also be removed.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleDeleteSpecimen}
+                      disabled={isDeleting}
+                      className="bg-destructive hover:bg-destructive/90"
+                    >
+                      {isDeleting ? "Deleting..." : "Delete"}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+          </div>
 
           <div className="grid lg:grid-cols-2 gap-8">
             <div className="space-y-4">
@@ -229,31 +348,40 @@ export default function SpecimenDetailPage() {
                 </Card>
               </div>
 
-              <Button
-                onClick={handleSubscribe}
-                variant={isSubscribed ? "outline" : "default"}
-                className="w-full gap-2"
-                disabled={!isAuthenticated || isSubscribing}
-              >
-                {isSubscribed ? (
-                  <>
-                    <BellOff className="h-4 w-4" />
-                    Unsubscribe
-                  </>
-                ) : (
-                  <>
-                    <Bell className="h-4 w-4" />
-                    Subscribe to Updates
-                  </>
-                )}
-              </Button>
+              {/* Only show subscribe button if: user is authenticated, not the owner, and owner's account is not private */}
+              {isAuthenticated && user && specimen.user_id !== user.id && !specimen.owner?.is_private && (
+                <Button
+                  onClick={handleSubscribe}
+                  variant={isSubscribed ? "outline" : "default"}
+                  className="w-full gap-2"
+                  disabled={isSubscribing}
+                >
+                  {isSubscribed ? (
+                    <>
+                      <BellOff className="h-4 w-4" />
+                      Unsubscribe
+                    </>
+                  ) : (
+                    <>
+                      <Bell className="h-4 w-4" />
+                      Subscribe to Updates
+                    </>
+                  )}
+                </Button>
+              )}
 
-              {!isAuthenticated && (
+              {!isAuthenticated && !specimen.owner?.is_private && (
                 <p className="text-xs text-center text-muted-foreground">
                   <Link href="/login" className="text-primary hover:underline">
                     Login
                   </Link>{" "}
                   to subscribe to updates
+                </p>
+              )}
+
+              {specimen.owner?.is_private && user && specimen.user_id !== user.id && (
+                <p className="text-xs text-center text-muted-foreground">
+                  This user's account is private. Subscriptions are not available.
                 </p>
               )}
             </div>
@@ -262,36 +390,15 @@ export default function SpecimenDetailPage() {
           <div className="space-y-4">
             <h2 className="text-2xl font-bold tracking-tight">Update Timeline</h2>
             {posts.length > 0 ? (
-              <div className="space-y-6">
+              <div className="max-w-2xl space-y-6">
                 {posts.map((post) => (
-                  <Card key={post.id}>
-                    <CardContent className="p-6">
-                      <div className="flex flex-col md:flex-row gap-6">
-                        <div className="relative w-full md:w-48 aspect-square shrink-0 overflow-hidden rounded-lg bg-muted">
-                          <Image
-                            src={post.image_url || "/placeholder.svg"}
-                            alt={post.specimen?.name || "Bonsai"}
-                            fill
-                            className="object-cover"
-                          />
-                        </div>
-                        <div className="flex-1 space-y-3">
-                          <div className="flex items-start justify-between gap-4">
-                            <div>
-                              <p className="text-sm text-muted-foreground">
-                                {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
-                              </p>
-                              {post.caption && <p className="mt-2 text-balance">{post.caption}</p>}
-                            </div>
-                            <div className="flex items-center gap-1 text-muted-foreground">
-                              <Heart className="h-4 w-4" />
-                              <span className="text-sm">{post.likes}</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                  <PostCard
+                    key={post.id}
+                    post={post}
+                    onLike={handleLike}
+                    onPrivacyChange={refreshPosts}
+                    onDelete={refreshPosts}
+                  />
                 ))}
               </div>
             ) : (
