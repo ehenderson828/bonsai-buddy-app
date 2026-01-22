@@ -93,6 +93,19 @@ export async function searchSpecimens(query: string): Promise<BonsaiSpecimenWith
   return data as BonsaiSpecimenWithOwner[]
 }
 
+export async function searchUsers(query: string): Promise<Profile[]> {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("is_private", false)
+    .ilike("name", `%${query}%`)
+    .order("name", { ascending: true })
+    .limit(20)
+
+  if (error) throw error
+  return data as Profile[]
+}
+
 export async function createSpecimen(specimen: {
   name: string
   species: string
@@ -702,7 +715,7 @@ export async function updateAccountPrivacy(userId: string, isPrivate: boolean) {
 export async function getUserPreferences(userId: string) {
   const { data, error } = await supabase
     .from('profiles')
-    .select('theme, email_preferences, notification_settings, is_private')
+    .select('avatar, theme, email_preferences, notification_settings, is_private')
     .eq('id', userId)
     .single()
 

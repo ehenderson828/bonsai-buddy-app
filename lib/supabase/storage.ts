@@ -88,6 +88,98 @@ export function validateImageFile(file: File): {
 }
 
 /**
+ * Upload an avatar image to Supabase Storage
+ * Uses a deterministic path so old avatars are automatically replaced
+ * @param file - The image file to upload
+ * @param userId - The user's ID
+ * @returns The public URL of the uploaded avatar
+ */
+export async function uploadAvatar(file: File, userId: string): Promise<string> {
+  try {
+    // Use deterministic filename so it overwrites previous avatar
+    const fileExt = file.name.split(".").pop()?.toLowerCase() || "jpg"
+    const fileName = `avatars/${userId}.${fileExt}`
+
+    // Upload file with upsert to replace existing
+    const { data, error } = await supabase.storage
+      .from(BUCKET_NAME)
+      .upload(fileName, file, {
+        cacheControl: "3600",
+        upsert: true, // Replace existing avatar
+      })
+
+    if (error) throw error
+
+    // Get public URL with cache-busting timestamp
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from(BUCKET_NAME).getPublicUrl(data.path)
+
+    // Add timestamp to bust browser cache when avatar is updated
+    return `${publicUrl}?t=${Date.now()}`
+  } catch (error) {
+    console.error("Error uploading avatar:", error)
+    throw error
+  }
+}
+
+/**
+ * Compress and resize avatar for optimal storage
+ * @param file - The image file to compress
+ * @returns Compressed file sized appropriately for avatars
+ */
+export async function compressAvatar(file: File): Promise<File> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.readAsDataURL(file)
+
+    reader.onload = (event) => {
+      const img = new Image()
+      img.src = event.target?.result as string
+
+      img.onload = () => {
+        const canvas = document.createElement("canvas")
+
+        // Create a square crop from the center
+        const size = Math.min(img.width, img.height)
+        const targetSize = 400 // 400x400 is good for avatars
+
+        canvas.width = targetSize
+        canvas.height = targetSize
+
+        const ctx = canvas.getContext("2d")
+
+        // Calculate crop position (center of image)
+        const sx = (img.width - size) / 2
+        const sy = (img.height - size) / 2
+
+        ctx?.drawImage(img, sx, sy, size, size, 0, 0, targetSize, targetSize)
+
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              const compressedFile = new File([blob], file.name, {
+                type: "image/jpeg",
+                lastModified: Date.now(),
+              })
+              resolve(compressedFile)
+            } else {
+              reject(new Error("Canvas to Blob conversion failed"))
+            }
+          },
+          "image/jpeg",
+          0.9 // 90% quality for avatars
+        )
+      }
+
+      img.onerror = () => reject(new Error("Failed to load image"))
+    }
+
+    reader.onerror = () => reject(new Error("Failed to read file"))
+  })
+}
+
+/**
  * Compress and resize image before upload (optional helper)
  * @param file - The image file to compress
  * @param maxWidth - Maximum width in pixels

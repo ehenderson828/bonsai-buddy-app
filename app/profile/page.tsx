@@ -87,7 +87,6 @@ export default function ProfilePage() {
                   {user?.name}
                   {user?.is_private && <Lock className="h-5 w-5 text-muted-foreground" />}
                 </h1>
-                <p className="text-muted-foreground">{user?.email}</p>
               </div>
 
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">

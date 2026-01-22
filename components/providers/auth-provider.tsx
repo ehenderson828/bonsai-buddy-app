@@ -12,12 +12,15 @@ interface User {
   is_private?: boolean
 }
 
+type OAuthProvider = "google" | "facebook" | "twitter"
+
 interface AuthContextType {
   user: User | null
   isAuthenticated: boolean
   isLoading: boolean
   login: (email: string, password: string) => Promise<void>
   signup: (name: string, email: string, password: string) => Promise<void>
+  signInWithOAuth: (provider: OAuthProvider) => Promise<void>
   logout: () => Promise<void>
 }
 
@@ -157,6 +160,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const signInWithOAuth = async (provider: OAuthProvider) => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      })
+
+      if (error) throw error
+
+      // The user will be redirected to the provider's login page
+      // After successful auth, they'll be redirected to /auth/callback
+    } catch (error: any) {
+      console.error("OAuth error:", error)
+      toast({
+        title: "Sign in failed",
+        description: error.message || "Could not sign in with this provider",
+        variant: "destructive",
+      })
+      throw error
+    }
+  }
+
   const logout = async () => {
     try {
       const { error } = await supabase.auth.signOut()
@@ -185,6 +212,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading,
         login,
         signup,
+        signInWithOAuth,
         logout,
       }}
     >

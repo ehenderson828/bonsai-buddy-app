@@ -11,17 +11,21 @@ import { Switch } from "@/components/ui/switch"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { useToast } from "@/hooks/use-toast"
-import { Loader2, Moon, Sun, Mail, Bell, Lock } from "lucide-react"
+import { Loader2, Moon, Sun, Mail, Bell, Lock, User, Upload } from "lucide-react"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Input } from "@/components/ui/input"
 import {
   getUserPreferences,
   updateUserTheme,
   updateEmailPreferences,
   updateNotificationSettings,
   updateAccountPrivacy,
+  updateProfile,
 } from "@/lib/supabase/queries"
+import { uploadAvatar, compressAvatar, validateImageFile } from "@/lib/supabase/storage"
 import type { EmailPreferences, NotificationSettings } from "@/lib/supabase/types"
 
-export default function SettingsPage() {
+function SettingsContent() {
   const router = useRouter()
   const { user, isAuthenticated, isLoading: authLoading } = useAuth()
   const { theme, setTheme } = useTheme()
@@ -47,6 +51,10 @@ export default function SettingsPage() {
 
   const [isPrivate, setIsPrivate] = useState(false)
 
+  // Avatar state
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
+
   // Load user preferences
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -68,6 +76,7 @@ export default function SettingsPage() {
         setEmailPrefs(prefs.email_preferences)
         setNotifSettings(prefs.notification_settings)
         setIsPrivate(prefs.is_private)
+        setAvatarUrl(prefs.avatar || null)
       }
     } catch (error) {
       console.error("Error loading preferences:", error)
@@ -182,6 +191,49 @@ export default function SettingsPage() {
     }
   }
 
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !user) return
+
+    // Validate file
+    const validation = validateImageFile(file)
+    if (!validation.isValid) {
+      toast({
+        title: "Invalid image",
+        description: validation.error,
+        variant: "destructive",
+      })
+      return
+    }
+
+    setIsUploadingAvatar(true)
+    try {
+      // Compress and upload
+      const compressedFile = await compressAvatar(file)
+      const newAvatarUrl = await uploadAvatar(compressedFile, user.id)
+
+      // Update profile in database
+      await updateProfile(user.id, { avatar: newAvatarUrl })
+
+      // Update local state
+      setAvatarUrl(newAvatarUrl)
+
+      toast({
+        title: "Profile picture updated",
+        description: "Your new profile picture has been saved",
+      })
+    } catch (error) {
+      console.error("Error uploading avatar:", error)
+      toast({
+        title: "Upload failed",
+        description: "Could not upload profile picture. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsUploadingAvatar(false)
+    }
+  }
+
   if (authLoading || isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -206,6 +258,81 @@ export default function SettingsPage() {
             Manage your account preferences and settings
           </p>
         </div>
+
+        {/* Profile Settings */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <User className="h-5 w-5 text-primary" />
+              <CardTitle>Profile</CardTitle>
+            </div>
+            <CardDescription>
+              Your profile information and picture
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Avatar Upload */}
+            <div className="flex items-center gap-6">
+              <div className="relative">
+                <Avatar className="h-24 w-24">
+                  <AvatarImage src={avatarUrl || undefined} alt={user.name} />
+                  <AvatarFallback className="text-2xl">
+                    {user.name?.[0]?.toUpperCase() || <User className="h-8 w-8" />}
+                  </AvatarFallback>
+                </Avatar>
+                {isUploadingAvatar && (
+                  <div className="absolute inset-0 flex items-center justify-center rounded-full bg-background/80">
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                  </div>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="avatar-upload" className="text-base font-medium">
+                  Profile Picture
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Upload a new profile picture. Max 5MB, JPEG/PNG/WebP.
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={isUploadingAvatar}
+                    onClick={() => document.getElementById("avatar-upload")?.click()}
+                  >
+                    <Upload className="mr-2 h-4 w-4" />
+                    {avatarUrl ? "Change Photo" : "Upload Photo"}
+                  </Button>
+                  <Input
+                    id="avatar-upload"
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png,image/webp"
+                    className="hidden"
+                    onChange={handleAvatarChange}
+                    disabled={isUploadingAvatar}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Account Info */}
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <Label className="text-muted-foreground text-xs uppercase tracking-wide">Name</Label>
+                <p className="font-medium">{user.name}</p>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-muted-foreground text-xs uppercase tracking-wide">Email</Label>
+                <p className="font-medium">{user.email}</p>
+                <p className="text-xs text-muted-foreground">
+                  Your email is private and never shared with other users
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Theme Settings */}
         <Card>
@@ -440,4 +567,22 @@ export default function SettingsPage() {
       </div>
     </div>
   )
+}
+
+export default function SettingsPage() {
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
+  return <SettingsContent />
 }

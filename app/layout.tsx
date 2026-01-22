@@ -6,6 +6,7 @@ import "./globals.css"
 import { AuthProvider } from "@/components/providers/auth-provider"
 import { ThemeProvider } from "@/components/providers/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
+import { CompleteProfileModal } from "@/components/bonsai/complete-profile-modal"
 
 const _geist = Geist({ subsets: ["latin"] })
 const _geistMono = Geist_Mono({ subsets: ["latin"] })
@@ -44,6 +45,7 @@ export default function RootLayout({
         <ThemeProvider>
           <AuthProvider>
             {children}
+            <CompleteProfileModal />
             <Toaster />
           </AuthProvider>
         </ThemeProvider>
