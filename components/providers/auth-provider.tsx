@@ -12,7 +12,7 @@ interface User {
   is_private?: boolean
 }
 
-type OAuthProvider = "google" | "facebook" | "twitter"
+type OAuthProvider = "google"
 
 interface AuthContextType {
   user: User | null

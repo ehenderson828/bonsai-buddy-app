@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from "next/server"
 import { Resend } from "resend"
 
-// Initialize Resend with API key
-const resend = new Resend(process.env.RESEND_API_KEY)
+let resend: Resend | null = null
+
+function getResendClient() {
+  if (!resend) {
+    resend = new Resend(process.env.RESEND_API_KEY)
+  }
+  return resend
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,7 +34,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Send email using Resend
-    const { data, error } = await resend.emails.send({
+    const { data, error } = await getResendClient().emails.send({
       from: process.env.CONTACT_EMAIL_FROM || "Bonsai Buddy Contact Form <onboarding@resend.dev>",
       to: [process.env.CONTACT_EMAIL_TO || "henderson.develop@gmail.com"],
       replyTo: email,
