@@ -36,28 +36,6 @@ function GoogleIcon({ className }: { className?: string }) {
   )
 }
 
-function FacebookIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24">
-      <path
-        fill="currentColor"
-        d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"
-      />
-    </svg>
-  )
-}
-
-function XIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24">
-      <path
-        fill="currentColor"
-        d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"
-      />
-    </svg>
-  )
-}
-
 export default function SignupPage() {
   const router = useRouter()
   const { signup, signInWithOAuth } = useAuth()
@@ -81,7 +59,7 @@ export default function SignupPage() {
     }
   }
 
-  const handleOAuthSignup = async (provider: "google" | "facebook" | "twitter") => {
+  const handleOAuthSignup = async (provider: "google") => {
     setOauthLoading(provider)
     try {
       await signInWithOAuth(provider)
@@ -103,47 +81,19 @@ export default function SignupPage() {
           <CardDescription>Create an account to start tracking your collection</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-3 gap-3">
-            <Button
-              variant="outline"
-              onClick={() => handleOAuthSignup("google")}
-              disabled={oauthLoading !== null}
-              className="w-full"
-            >
-              {oauthLoading === "google" ? (
-                <span className="h-5 w-5 animate-spin rounded-full border-2 border-current border-t-transparent" />
-              ) : (
-                <GoogleIcon className="h-5 w-5" />
-              )}
-              <span className="sr-only">Sign up with Google</span>
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => handleOAuthSignup("facebook")}
-              disabled={oauthLoading !== null}
-              className="w-full"
-            >
-              {oauthLoading === "facebook" ? (
-                <span className="h-5 w-5 animate-spin rounded-full border-2 border-current border-t-transparent" />
-              ) : (
-                <FacebookIcon className="h-5 w-5" />
-              )}
-              <span className="sr-only">Sign up with Facebook</span>
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => handleOAuthSignup("twitter")}
-              disabled={oauthLoading !== null}
-              className="w-full"
-            >
-              {oauthLoading === "twitter" ? (
-                <span className="h-5 w-5 animate-spin rounded-full border-2 border-current border-t-transparent" />
-              ) : (
-                <XIcon className="h-5 w-5" />
-              )}
-              <span className="sr-only">Sign up with X</span>
-            </Button>
-          </div>
+          <Button
+            variant="outline"
+            onClick={() => handleOAuthSignup("google")}
+            disabled={oauthLoading !== null}
+            className="w-full gap-2"
+          >
+            {oauthLoading === "google" ? (
+              <span className="h-5 w-5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+            ) : (
+              <GoogleIcon className="h-5 w-5" />
+            )}
+            Sign up with Google
+          </Button>
 
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
